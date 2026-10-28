@@ -1,0 +1,1758 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>College Attendance Calculator</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com/3.4.17"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+<style>
+/* Layout concept: drafting-paper ground with a sticky top bar and tab row; content in one 1120px column of flat, hairline-bordered panels; every number in mono. */
+:root{
+  --bg:#f2f5fa; --bar:rgba(242,245,250,.93); --grid:#e5eaf3;
+  --card:#ffffff; --card2:#f6f8fc; --fg:#101828; --muted:#566178; --line:#d7deeb; --track:#e3e8f2;
+  --accent:#3447c9; --accent-fg:#ffffff; --accent-soft:#e7eafb;
+  --good:#136c3d; --good-soft:#dcf3e6; --good-bar:#24a05c;
+  --warn:#8a5600; --warn-soft:#fbecc9; --warn-bar:#dd9a22;
+  --bad:#b4232f; --bad-soft:#fbe1e3; --bad-bar:#dd4b57;
+  --none-bar:#9aa5bb;
+  --shadow:0 1px 2px rgba(16,24,40,.06);
+  --font-display:'Bricolage Grotesque','Segoe UI',system-ui,sans-serif;
+  --font-body:'IBM Plex Sans','Segoe UI',system-ui,sans-serif;
+  --font-mono:'IBM Plex Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0d1220; --bar:rgba(13,18,32,.93); --grid:#131a2d;
+    --card:#151c30; --card2:#1a2238; --fg:#e8ecf6; --muted:#97a3bb; --line:#26304b; --track:#232d48;
+    --accent:#8fa2ff; --accent-fg:#0d1220; --accent-soft:#222c52;
+    --good:#58d08f; --good-soft:#15332a; --good-bar:#3fbf79;
+    --warn:#f0bd5a; --warn-soft:#3a2e14; --warn-bar:#e9ae3f;
+    --bad:#ff8088; --bad-soft:#401a22; --bad-bar:#f0626d;
+    --none-bar:#66728d; --shadow:none; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0d1220; --bar:rgba(13,18,32,.93); --grid:#131a2d;
+  --card:#151c30; --card2:#1a2238; --fg:#e8ecf6; --muted:#97a3bb; --line:#26304b; --track:#232d48;
+  --accent:#8fa2ff; --accent-fg:#0d1220; --accent-soft:#222c52;
+  --good:#58d08f; --good-soft:#15332a; --good-bar:#3fbf79;
+  --warn:#f0bd5a; --warn-soft:#3a2e14; --warn-bar:#e9ae3f;
+  --bad:#ff8088; --bad-soft:#401a22; --bad-bar:#f0626d;
+  --none-bar:#66728d; --shadow:none; color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:border-box}
+html,body{min-height:100%}
+body{
+  margin:0; background-color:var(--bg); color:var(--fg);
+  background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+  background-size:32px 32px;
+  font-family:var(--font-body); font-size:15px; line-height:1.5; -webkit-font-smoothing:antialiased;
+}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:40;background:var(--bg)}
+h1,h2,h3,.disp{font-family:var(--font-display);letter-spacing:-.01em;text-wrap:balance;margin:0}
+p{margin:0}
+a{color:inherit}
+.num{font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+.gutter{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.inner{max-width:1120px;margin:0 auto;min-width:0}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* top bar */
+.topbar{position:sticky;top:env(safe-area-inset-top,0px);z-index:30;background:var(--bar);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.topbar-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-block:10px}
+.brand{display:flex;align-items:center;gap:10px;text-decoration:none;min-width:0}
+.mark{flex:none;width:36px;height:36px;border-radius:8px;background:var(--accent);color:var(--accent-fg);display:grid;place-items:center;font:600 13px var(--font-mono)}
+.brand b{font:700 17px var(--font-display);white-space:nowrap}
+.brand small{display:block;color:var(--muted);font-size:12px;line-height:1.1}
+.tabs{display:flex;gap:4px;overflow-x:auto;padding-bottom:8px;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{flex:none;padding:7px 14px;border-radius:8px;font-weight:500;color:var(--muted);text-decoration:none;border:1px solid transparent;transition:background .15s,color .15s}
+.tab:hover{color:var(--fg);background:var(--card2)}
+.tab.on{background:var(--card);color:var(--fg);border-color:var(--line);box-shadow:var(--shadow)}
+main{padding-block:22px 80px}
+.view{animation:rise .28s ease both}
+@keyframes rise{from{opacity:.25;transform:translateY(6px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* surfaces */
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);min-width:0}
+.lbl{display:block;font-size:12px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+.muted{color:var(--muted)}
+.sec-h{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin:28px 0 12px}
+.sec-h h2{font-size:20px}
+
+/* controls */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:42px;padding:0 14px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--fg);font:500 14px var(--font-body);cursor:pointer;text-decoration:none;transition:border-color .15s,background .15s,transform .1s}
+.btn:hover{border-color:var(--accent)}
+.btn:active{transform:scale(.97)}
+.btn-primary{background:var(--accent);color:var(--accent-fg);border-color:var(--accent);font-weight:600}
+.btn-primary:hover{filter:brightness(1.08)}
+.btn-danger{color:var(--bad)}
+.btn-danger:hover{border-color:var(--bad-bar)}
+.btn-solid-danger{background:var(--bad-bar);border-color:var(--bad-bar);color:#fff;font-weight:600}
+.btn-sm{min-height:34px;padding:0 10px;font-size:13px}
+.icon-btn{width:42px;padding:0}
+.input{width:100%;min-height:42px;padding:8px 12px;border:1px solid var(--line);border-radius:8px;background:var(--card2);color:var(--fg);font:inherit}
+.input:focus{border-color:var(--accent);outline:none;box-shadow:0 0 0 3px var(--accent-soft)}
+textarea.input{font-family:var(--font-mono);font-size:12px;line-height:1.5;resize:vertical}
+.err{color:var(--bad);font-size:13px;margin-top:4px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--card2)}
+.seg button{border:0;background:transparent;color:var(--muted);padding:8px 16px;font:500 14px var(--font-body);cursor:pointer}
+.seg button.on{background:var(--accent);color:var(--accent-fg)}
+.act-row{display:flex;gap:10px}
+.act{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:56px;border-radius:10px;font:600 17px var(--font-body);cursor:pointer;transition:transform .1s,background .15s,color .15s}
+.act:active{transform:scale(.96)}
+.act-present{background:var(--good-soft);color:var(--good);border:1.5px solid var(--good-bar)}
+.act-present:hover{background:var(--good-bar);color:#fff}
+.act-absent{background:var(--bad-soft);color:var(--bad);border:1.5px solid var(--bad-bar)}
+.act-absent:hover{background:var(--bad-bar);color:#fff}
+
+/* pills + progress */
+.pill{display:inline-flex;align-items:center;gap:6px;padding:2px 10px;border-radius:999px;font-size:12px;font-weight:600;white-space:nowrap}
+.pill::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+.pill-good{background:var(--good-soft);color:var(--good)}
+.pill-warn{background:var(--warn-soft);color:var(--warn)}
+.pill-bad{background:var(--bad-soft);color:var(--bad)}
+.pill-none{background:var(--card2);color:var(--muted);border:1px solid var(--line)}
+.bar{position:relative;height:12px;border-radius:999px;background:var(--track)}
+.bar>i{display:block;height:100%;border-radius:999px;transition:width .6s cubic-bezier(.2,.8,.2,1)}
+.bar .mark-req{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--fg);opacity:.75;border-radius:1px}
+.s-good>i{background:var(--good-bar)}.s-warn>i{background:var(--warn-bar)}.s-bad>i{background:var(--bad-bar)}.s-none>i{background:var(--none-bar)}
+.big{font:700 34px/1 var(--font-display)}
+.big.num{font-family:var(--font-mono);font-weight:600;font-size:30px;letter-spacing:-.02em}
+
+/* tiles / cells */
+.tile{padding:16px}
+.tile .v{font:600 28px/1.1 var(--font-mono);font-variant-numeric:tabular-nums;margin-top:2px}
+.cells{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.cell{background:var(--card2);border:1px solid var(--line);border-radius:8px;padding:8px 10px;min-width:0}
+.cell span{display:block;font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+.cell b{font:600 18px var(--font-mono);font-variant-numeric:tabular-nums}
+.note{border-radius:8px;padding:10px 12px;font-size:14px}
+.note-bad{background:var(--bad-soft);color:var(--bad)}
+.note-warn{background:var(--warn-soft);color:var(--warn)}
+.note-info{background:var(--accent-soft);color:var(--fg)}
+.note-good{background:var(--good-soft);color:var(--good)}
+.note a{font-weight:600}
+
+/* charts */
+.chart-scroll{overflow-x:auto;position:relative}
+.ct{font-family:var(--font-mono);font-size:11px;fill:var(--muted)}
+.cv{font-family:var(--font-mono);font-size:11px;font-weight:600;fill:var(--fg)}
+.dn{font:600 17px var(--font-mono);fill:var(--fg)}
+.barg{cursor:pointer;outline:none}
+.barg:hover rect:nth-of-type(2),.barg:focus rect:nth-of-type(2){opacity:.82}
+.tip{position:absolute;top:0;transform:translateX(-50%);pointer-events:none;background:var(--fg);color:var(--bg);border-radius:8px;padding:6px 10px;font-size:12px;white-space:nowrap;z-index:2}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12px;color:var(--muted)}
+.dot{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+
+/* subject card, rows, goals */
+.sc{padding:16px;display:flex;flex-direction:column;gap:14px}
+.sc h3{font-size:18px;line-height:1.2}
+.sc h3 a{text-decoration:none}.sc h3 a:hover{text-decoration:underline}
+.code{font:500 12px var(--font-mono);color:var(--muted)}
+.rec{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:10px 14px;border-top:1px solid var(--line)}
+.rec:first-child{border-top:0}
+.rec-d{width:112px;flex:none}
+.rec-s{flex:1 1 140px;min-width:0;font-weight:500;text-decoration:none}
+.rec .btn{margin-left:auto}
+.goal{border:1px solid var(--line);border-radius:10px;padding:14px;background:var(--card2)}
+.goal-h{display:flex;justify-content:space-between;gap:8px;font-weight:600;margin-bottom:10px;flex-wrap:wrap}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{min-height:34px;padding:0 12px;border-radius:999px;border:1px solid var(--line);background:var(--card);color:var(--fg);font:500 13px var(--font-mono);cursor:pointer}
+.chip.on{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
+.mrow{padding:14px 16px;display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr) auto;gap:10px 16px;align-items:center}
+@media(max-width:760px){.mrow{grid-template-columns:minmax(0,1fr)}}
+.empty{padding:36px 20px;text-align:center}
+
+/* modal + toast */
+.modal-back{position:fixed;inset:0;z-index:50;background:rgba(8,12,24,.55);display:grid;place-items:center;padding:16px;overflow-y:auto;animation:rise .15s ease both}
+.modal{width:100%;max-width:480px;max-height:92vh;overflow-y:auto;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:20px}
+.modal h2{font-size:20px;margin-bottom:14px}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:60;display:flex;align-items:center;gap:14px;max-width:calc(100% - 32px);background:var(--fg);color:var(--bg);padding:10px 14px;border-radius:10px;font-size:14px;animation:rise .2s ease both}
+.toast button{background:transparent;border:0;color:var(--accent);font:600 14px var(--font-body);cursor:pointer;padding:4px}
+:root .toast button{color:var(--bg);text-decoration:underline}
+
+/* timetable */
+.tt-grid{display:grid;gap:12px;grid-template-columns:repeat(1,minmax(0,1fr))}
+@media(min-width:720px){.tt-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(min-width:1080px){.tt-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.tt-day{overflow:hidden}
+.tt-day.today{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.tt-day-h{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 14px;background:var(--card2)}
+.tt-day-h h3{font-size:16px}
+.tt-row{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;padding:10px 14px;border-top:1px solid var(--line)}
+.tt-time{flex:0 0 auto;min-width:150px;font-size:13px;font-weight:500}
+.tt-main{flex:1 1 140px;min-width:0}
+.tt-main b{font-weight:600;overflow-wrap:anywhere}
+.tt-room{font-size:13px;color:var(--muted);overflow-wrap:anywhere}
+.tt-acts{display:flex;gap:6px;margin-left:auto}
+.tt-none{padding:14px;color:var(--muted);font-size:14px}
+.tt-file{max-width:100%;max-height:520px;border-radius:8px;border:1px solid var(--line);display:block;margin:0 auto}
+.tt-pdf{width:100%;height:520px;border:1px solid var(--line);border-radius:8px;background:var(--card2)}
+.tt-table-wrap{overflow:auto;max-height:420px;border:1px solid var(--line);border-radius:8px}
+.tt-table{border-collapse:collapse;font-size:13px;width:max-content;min-width:100%}
+.tt-table td{border:1px solid var(--line);padding:6px 10px;white-space:nowrap;font-family:var(--font-mono)}
+.tt-table tr:first-child td{background:var(--card2);font-weight:600}
+</style>
+</head>
+<body>
+
+
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState, useEffect, useRef } = React;
+
+/* ---------- constants ---------- */
+const KEY = 'collegeAttendance.v1';
+const THEME_KEY = 'collegeAttendance.theme';
+const SNAP_KEY = 'collegeAttendance.snapshot';
+const DEFAULT_MIN = 75;
+
+/* ---------- helpers ---------- */
+const pad = (n) => String(n).padStart(2, '0');
+const ymd = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const todayStr = () => ymd(new Date());
+const dayOffset = (n) => { const d = new Date(); d.setDate(d.getDate() - n); return ymd(d); };
+const uid = () => 's' + Math.random().toString(36).slice(2, 9) + Date.now().toString(36).slice(-3);
+const rid = () => 'r' + Math.random().toString(36).slice(2, 9) + Date.now().toString(36).slice(-3);
+const fmtDate = (s) => {
+  const [y, m, d] = String(s).split('-').map(Number);
+  if (!y || !m || !d) return s;
+  return new Date(y, m - 1, d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+};
+const plural = (n, one, many) => (n === 1 ? one : many);
+const toInt = (v) => { const n = Math.floor(Number(v)); return Number.isFinite(n) && n > 0 ? n : 0; };
+const shortName = (s) =>
+  (s.code ? s.code : s.name.split(/\s+/).filter(Boolean).map((w) => w[0]).join('').toUpperCase()).slice(0, 7);
+const go = (h) => { window.location.hash = h; };
+
+//#MATH-START
+const pctOf = (a, t) => (t > 0 ? (a / t) * 100 : 0);
+const fmtPct = (a, t) => pctOf(a, t).toFixed(2) + '%';
+function statusOf(s) {
+  const a = s.attended, t = s.conducted, r = s.required;
+  if (t <= 0) return 'none';
+  if (a * 100 < r * t - 1e-9) return 'bad';
+  if (a * 100 < (r + 5) * t - 1e-9) return 'warn';
+  return 'good';
+}
+/* Smallest n with (a+n)/(t+n) >= x/100  ->  n >= (x*t - 100*a) / (100 - x) */
+function needToAttend(a, t, x) {
+  if (t <= 0) return 0;
+  if (a * 100 >= x * t - 1e-9) return 0;
+  if (x >= 100) return Infinity;
+  return Math.max(0, Math.ceil((x * t - 100 * a) / (100 - x) - 1e-9));
+}
+/* Largest m with a/(t+m) >= x/100  ->  m <= (100*a - x*t) / x */
+function canMiss(a, t, x) {
+  if (x <= 0) return Infinity;
+  if (t <= 0) return 0;
+  if (a * 100 < x * t - 1e-9) return 0;
+  return Math.max(0, Math.floor((100 * a - x * t) / x + 1e-9));
+}
+//#MATH-END
+
+const sortHist = (arr, asc) => {
+  const out = [...arr].sort((x, y) => (x.date === y.date ? (x.ts || 0) - (y.ts || 0) : x.date < y.date ? -1 : 1));
+  return asc ? out : out.reverse();
+};
+
+function trendSeries(s) {
+  const recs = sortHist(s.history, true);
+  let a = s.attended, t = s.conducted, broke = false;
+  const out = [];
+  for (let i = recs.length - 1; i >= 0; i--) {
+    if (t <= 0) { broke = true; break; }
+    out.unshift({ pct: pctOf(a, t), date: recs[i].date });
+    if (recs[i].status === 'present') a--;
+    t--;
+    if (a < 0 || a > t) { broke = true; break; }
+  }
+  if (!broke && t > 0) out.unshift({ pct: pctOf(a, t), date: null });
+  return out;
+}
+
+/* ---------- data model ---------- */
+function cleanSubject(s) {
+  const conducted = toInt(s.conducted);
+  const attended = Math.min(toInt(s.attended), conducted);
+  let required = Number(s.required);
+  if (!Number.isFinite(required)) required = DEFAULT_MIN;
+  required = Math.min(100, Math.max(1, required));
+  const history = (Array.isArray(s.history) ? s.history : [])
+    .filter((r) => r && /^\d{4}-\d{2}-\d{2}$/.test(r.date) && (r.status === 'present' || r.status === 'absent'))
+    .map((r) => ({ id: String(r.id || rid()), date: r.date, status: r.status, ts: Number(r.ts) || 0 }));
+  return {
+    id: String(s.id || uid()),
+    name: String(s.name || 'Untitled subject').trim().slice(0, 80),
+    code: String(s.code || '').trim().slice(0, 20),
+    required, conducted, attended, history,
+  };
+}
+function cleanData(d) {
+  if (!d || !Array.isArray(d.subjects)) throw new Error('Unrecognised data');
+  return { sample: !!d.sample, subjects: d.subjects.map(cleanSubject) };
+}
+function seedData() {
+  const mk = (name, code, req, conducted, attended, recent) => {
+    const n = recent.length;
+    return {
+      id: uid(), name, code, required: req, conducted, attended,
+      history: recent.split('').map((ch, i) => ({
+        id: rid(), date: dayOffset(n - i), status: ch === 'P' ? 'present' : 'absent', ts: Date.now() - (n - i) * 86400000,
+      })),
+    };
+  };
+  return {
+    sample: true,
+    subjects: [
+      mk('Engineering Mathematics', 'MAT101', 75, 32, 26, 'PPAPPP'),
+      mk('Engineering Physics', 'PHY102', 75, 36, 25, 'PAAPAP'),
+      mk('Basic Electrical and Electronics Engineering', 'BEE103', 75, 34, 28, 'PPPAPP'),
+      mk('Programming in C++', 'CPP104', 75, 38, 30, 'PAPPAP'),
+      mk('Engineering Graphics', 'EGR105', 75, 24, 18, 'APPAPA'),
+      mk('Communication Skills', 'COM106', 75, 16, 14, 'PPPPAP'),
+    ],
+  };
+}
+function loadData() {
+  try {
+    const raw = localStorage.getItem(KEY);
+    if (raw) return cleanData(JSON.parse(raw));
+  } catch (e) {}
+  return seedData();
+}
+
+/* ---------- CSV / JSON ---------- */
+const csvEsc = (v) => {
+  const s = String(v == null ? '' : v);
+  return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+};
+function toCSV(subjects) {
+  const rows = [['record_type', 'subject_name', 'subject_code', 'required_pct', 'total_conducted', 'total_attended', 'date', 'status']];
+  subjects.forEach((s) => rows.push(['subject', s.name, s.code, s.required, s.conducted, s.attended, '', '']));
+  subjects.forEach((s) => sortHist(s.history, true).forEach((r) => rows.push(['history', s.name, s.code, '', '', '', r.date, r.status])));
+  return rows.map((r) => r.map(csvEsc).join(',')).join('\r\n');
+}
+function toJSONBackup(subjects) {
+  return JSON.stringify({ app: 'college-attendance-calculator', version: 1, exportedAt: new Date().toISOString(), subjects }, null, 2);
+}
+function parseCSV(text) {
+  const rows = []; let row = [], cur = '', q = false;
+  text = text.replace(/^\uFEFF/, '');
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (q) {
+      if (ch === '"') { if (text[i + 1] === '"') { cur += '"'; i++; } else q = false; }
+      else cur += ch;
+    } else if (ch === '"') q = true;
+    else if (ch === ',') { row.push(cur); cur = ''; }
+    else if (ch === '\n' || ch === '\r') {
+      if (ch === '\r' && text[i + 1] === '\n') i++;
+      row.push(cur); cur = ''; rows.push(row); row = [];
+    } else cur += ch;
+  }
+  if (cur !== '' || row.length) { row.push(cur); rows.push(row); }
+  return rows.filter((r) => r.some((c) => c.trim() !== ''));
+}
+function fromCSV(text) {
+  const rows = parseCSV(text);
+  if (rows.length < 2) throw new Error('The file has no data rows.');
+  const head = rows[0].map((h) => h.trim().toLowerCase());
+  const col = (n) => head.indexOf(n);
+  if (col('record_type') < 0 || col('subject_name') < 0) throw new Error('This does not look like a file exported from this calculator.');
+  const get = (r, n) => (col(n) >= 0 ? r[col(n)] || '' : '').trim();
+  const map = new Map();
+  const ensure = (r) => {
+    const k = get(r, 'subject_name').toLowerCase() + '|' + get(r, 'subject_code').toLowerCase();
+    if (!map.has(k)) map.set(k, { id: uid(), name: get(r, 'subject_name'), code: get(r, 'subject_code'), required: DEFAULT_MIN, conducted: 0, attended: 0, history: [] });
+    return map.get(k);
+  };
+  rows.slice(1).forEach((r) => {
+    if (!get(r, 'subject_name')) return;
+    const type = get(r, 'record_type').toLowerCase();
+    const s = ensure(r);
+    if (type === 'subject') {
+      s.required = Number(get(r, 'required_pct')) || DEFAULT_MIN;
+      s.conducted = toInt(get(r, 'total_conducted'));
+      s.attended = toInt(get(r, 'total_attended'));
+    } else if (type === 'history') {
+      const date = get(r, 'date'), st = get(r, 'status').toLowerCase();
+      if (/^\d{4}-\d{2}-\d{2}$/.test(date) && (st === 'present' || st === 'absent'))
+        s.history.push({ id: rid(), date, status: st, ts: Date.now() + s.history.length });
+    }
+  });
+  const subjects = [...map.values()].map(cleanSubject);
+  if (!subjects.length) throw new Error('No subjects were found in the file.');
+  return subjects;
+}
+function parseImport(text) {
+  const t = text.trim();
+  if (!t) throw new Error('There is nothing to read yet.');
+  if (t[0] === '{' || t[0] === '[') {
+    let obj;
+    try { obj = JSON.parse(t); } catch (e) { throw new Error('That JSON could not be read.'); }
+    const list = Array.isArray(obj) ? obj : obj.subjects;
+    if (!Array.isArray(list)) throw new Error('No subjects were found in that backup.');
+    return list.map(cleanSubject);
+  }
+  return fromCSV(t);
+}
+function download(name, text, mime) {
+  try {
+    const blob = new Blob([text], { type: mime });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1500);
+  } catch (e) {}
+}
+async function copyText(text) {
+  try { await navigator.clipboard.writeText(text); return true; } catch (e) { return false; }
+}
+
+/* ---------- hooks ---------- */
+function useRoute() {
+  const get = () => window.location.hash.replace(/^#/, '');
+  const [h, setH] = useState(get);
+  useEffect(() => {
+    const f = () => setH(get());
+    window.addEventListener('hashchange', f);
+    return () => window.removeEventListener('hashchange', f);
+  }, []);
+  return h;
+}
+function useTheme() {
+  const [theme, setTheme] = useState(() => { try { return localStorage.getItem(THEME_KEY) || 'system'; } catch (e) { return 'system'; } });
+  useEffect(() => { if (theme !== 'system') document.documentElement.setAttribute('data-theme', theme); }, [theme]);
+  const attr = document.documentElement.getAttribute('data-theme');
+  const effective = theme !== 'system' ? theme : attr || (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  const toggle = () => {
+    const next = effective === 'dark' ? 'light' : 'dark';
+    setTheme(next);
+    try { localStorage.setItem(THEME_KEY, next); } catch (e) {}
+  };
+  return { effective, toggle };
+}
+function useWidth() {
+  const ref = useRef(null);
+  const [w, setW] = useState(0);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    setW(Math.floor(el.clientWidth));
+    if (!window.ResizeObserver) return;
+    const ro = new ResizeObserver((es) => setW(Math.floor(es[0].contentRect.width)));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  return [ref, w];
+}
+
+/* ---------- small components ---------- */
+const ICONS = {
+  sun: <><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" /></>,
+  moon: <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" />,
+  plus: <path d="M12 5v14M5 12h14" />,
+  check: <path d="M20 6 9 17l-5-5" />,
+  x: <path d="M18 6 6 18M6 6l12 12" />,
+  edit: <><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" /></>,
+  trash: <><path d="M3 6h18" /><path d="M8 6V4h8v2" /><path d="M19 6l-1 14H6L5 6" /></>,
+  reset: <><path d="M3 12a9 9 0 1 0 3-6.7L3 8" /><path d="M3 3v5h5" /></>,
+  back: <path d="M15 18l-6-6 6-6" />,
+  down: <><path d="M12 3v12" /><path d="M7 10l5 5 5-5" /><path d="M5 21h14" /></>,
+  copy: <><rect x="9" y="9" width="11" height="11" rx="2" /><path d="M5 15V5a2 2 0 0 1 2-2h8" /></>,
+};
+const Icon = ({ n, s = 18 }) => (
+  <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{ICONS[n]}</svg>
+);
+
+const STATUS_LABEL = { good: 'Safe', warn: 'Close to limit', bad: 'Below minimum', none: 'No classes yet' };
+const Pill = ({ st }) => <span className={'pill pill-' + st}>{STATUS_LABEL[st]}</span>;
+
+function ProgressBar({ s }) {
+  const st = statusOf(s);
+  const p = Math.min(100, pctOf(s.attended, s.conducted));
+  return (
+    <div className={'bar s-' + st} role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow={Math.round(p)} aria-label={`Attendance ${p.toFixed(2)} percent, required ${s.required} percent`}>
+      <i style={{ width: p + '%' }} />
+      <span className="mark-req" style={{ left: `calc(${s.required}% - 1px)` }} title={`Required ${s.required}%`} />
+    </div>
+  );
+}
+
+function Modal({ children, onClose, label }) {
+  useEffect(() => {
+    const f = (e) => e.key === 'Escape' && onClose();
+    window.addEventListener('keydown', f);
+    return () => window.removeEventListener('keydown', f);
+  }, []);
+  return (
+    <div className="modal-back" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="modal" role="dialog" aria-modal="true" aria-label={label}>{children}</div>
+    </div>
+  );
+}
+
+function Confirm({ c, onCancel, onYes }) {
+  return (
+    <Modal onClose={onCancel} label={c.title}>
+      <h2>{c.title}</h2>
+      <p className="muted" style={{ marginBottom: 18 }}>{c.body}</p>
+      <div className="flex gap-2 justify-end flex-wrap">
+        <button className="btn" onClick={onCancel}>Cancel</button>
+        <button className={'btn ' + (c.danger ? 'btn-solid-danger' : 'btn-primary')} onClick={onYes}>{c.label}</button>
+      </div>
+    </Modal>
+  );
+}
+
+function SubjectModal({ subject, onSave, onClose }) {
+  const [f, setF] = useState({
+    name: subject ? subject.name : '', code: subject ? subject.code : '',
+    required: String(subject ? subject.required : DEFAULT_MIN),
+    conducted: String(subject ? subject.conducted : 0), attended: String(subject ? subject.attended : 0),
+  });
+  const [err, setErr] = useState({});
+  const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
+  const okInt = (v) => /^\d+$/.test(v);
+  const missed = okInt(f.conducted) && okInt(f.attended) && +f.attended <= +f.conducted ? +f.conducted - +f.attended : null;
+  const submit = (e) => {
+    e.preventDefault();
+    const er = {};
+    const name = f.name.trim();
+    const req = Number(f.required);
+    if (!name) er.name = 'Enter a subject name.';
+    if (f.required === '' || !(req >= 1 && req <= 100)) er.required = 'Enter a percentage from 1 to 100.';
+    if (!okInt(f.conducted)) er.conducted = 'Enter a whole number, 0 or more.';
+    if (!okInt(f.attended)) er.attended = 'Enter a whole number, 0 or more.';
+    else if (!er.conducted && +f.attended > +f.conducted) er.attended = 'Attended cannot be more than conducted.';
+    setErr(er);
+    if (Object.keys(er).length) return;
+    onSave({ ...(subject || { id: uid(), history: [] }), name, code: f.code.trim(), required: req, conducted: +f.conducted, attended: +f.attended });
+  };
+  return (
+    <Modal onClose={onClose} label={subject ? 'Edit subject' : 'Add subject'}>
+      <h2>{subject ? 'Edit subject' : 'Add subject'}</h2>
+      <form onSubmit={submit} noValidate className="grid gap-4">
+        <div>
+          <label className="lbl" htmlFor="f-name">Subject name</label>
+          <input id="f-name" className="input" value={f.name} onChange={set('name')} autoFocus placeholder="e.g. Engineering Mathematics" maxLength={80} />
+          {err.name && <div className="err">{err.name}</div>}
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="lbl" htmlFor="f-code">Code (optional)</label>
+            <input id="f-code" className="input" value={f.code} onChange={set('code')} placeholder="MAT101" maxLength={20} />
+          </div>
+          <div>
+            <label className="lbl" htmlFor="f-req">Minimum %</label>
+            <input id="f-req" className="input num" type="number" step="any" min="1" max="100" value={f.required} onChange={set('required')} />
+            {err.required && <div className="err">{err.required}</div>}
+          </div>
+        </div>
+        <div className="grid grid-cols-3 gap-3">
+          <div>
+            <label className="lbl" htmlFor="f-cond">Conducted</label>
+            <input id="f-cond" className="input num" type="number" min="0" step="1" value={f.conducted} onChange={set('conducted')} />
+          </div>
+          <div>
+            <label className="lbl" htmlFor="f-att">Attended</label>
+            <input id="f-att" className="input num" type="number" min="0" step="1" value={f.attended} onChange={set('attended')} />
+          </div>
+          <div>
+            <span className="lbl">Missed</span>
+            <div className="input num" style={{ display: 'flex', alignItems: 'center' }}>{missed === null ? '—' : missed}</div>
+          </div>
+        </div>
+        {(err.conducted || err.attended) && <div className="err" style={{ marginTop: -8 }}>{err.conducted || err.attended}</div>}
+        <div className="flex gap-2 justify-end flex-wrap">
+          <button type="button" className="btn" onClick={onClose}>Cancel</button>
+          <button type="submit" className="btn btn-primary">{subject ? 'Save changes' : 'Add subject'}</button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
+function RecordModal({ s, r, onSave, onDelete, onClose }) {
+  const [date, setDate] = useState(r.date);
+  const [status, setStatus] = useState(r.status);
+  const [sure, setSure] = useState(false);
+  const valid = /^\d{4}-\d{2}-\d{2}$/.test(date);
+  return (
+    <Modal onClose={onClose} label="Edit attendance entry">
+      <h2>Edit entry</h2>
+      <p className="muted" style={{ marginBottom: 14 }}>{s.name}</p>
+      <div className="grid gap-4">
+        <div>
+          <label className="lbl" htmlFor="r-date">Date</label>
+          <input id="r-date" className="input num" type="date" max={todayStr()} value={date} onChange={(e) => setDate(e.target.value)} />
+        </div>
+        <div>
+          <span className="lbl">Status</span>
+          <div className="act-row">
+            <button type="button" className="act act-present" style={{ minHeight: 46, opacity: status === 'present' ? 1 : .45 }} onClick={() => setStatus('present')}><Icon n="check" />Present</button>
+            <button type="button" className="act act-absent" style={{ minHeight: 46, opacity: status === 'absent' ? 1 : .45 }} onClick={() => setStatus('absent')}><Icon n="x" />Absent</button>
+          </div>
+        </div>
+        <div className="flex gap-2 flex-wrap justify-between">
+          {sure
+            ? <button className="btn btn-solid-danger" onClick={onDelete}>Yes, delete entry</button>
+            : <button className="btn btn-danger" onClick={() => setSure(true)}><Icon n="trash" s={16} />Delete entry</button>}
+          <div className="flex gap-2">
+            <button className="btn" onClick={onClose}>Cancel</button>
+            <button className="btn btn-primary" disabled={!valid} onClick={() => onSave({ date, status })}>Save</button>
+          </div>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+/* ---------- charts ---------- */
+function Donut({ a, t }) {
+  const r = 48, c = 2 * Math.PI * r;
+  const frac = t > 0 ? a / t : 0;
+  return (
+    <svg viewBox="0 0 120 120" width="160" height="160" role="img" aria-label={`Attended ${a} of ${t} classes`}>
+      <circle cx="60" cy="60" r={r} fill="none" stroke={t > 0 ? 'var(--bad-bar)' : 'var(--track)'} strokeWidth="14" />
+      <circle cx="60" cy="60" r={r} fill="none" stroke="var(--accent)" strokeWidth="14" strokeDasharray={`${c * frac} ${c}`} transform="rotate(-90 60 60)" style={{ transition: 'stroke-dasharray .6s ease' }} />
+      <text x="60" y="61" textAnchor="middle" className="dn">{fmtPct(a, t)}</text>
+      <text x="60" y="77" textAnchor="middle" className="ct">overall</text>
+    </svg>
+  );
+}
+
+function BarChart({ subjects }) {
+  const [ref, w] = useWidth();
+  const [tip, setTip] = useState(null);
+  const n = subjects.length;
+  const H = 250, L = 36, R = 10, T = 26, B = 30;
+  const W = Math.max(w, n * 58 + L + R);
+  const y = (v) => T + (H - T - B) * (1 - v / 100);
+  const slot = (W - L - R) / Math.max(n, 1);
+  const bw = Math.min(40, slot * 0.6);
+  return (
+    <div>
+      <div ref={ref} className="chart-scroll">
+        <div style={{ position: 'relative', width: W, height: H }}>
+          {w > 0 && (
+            <svg width={W} height={H} role="img" aria-label="Attendance percentage by subject">
+              {[0, 25, 50, 75, 100].map((v) => (
+                <g key={v}>
+                  <line x1={L} x2={W - R} y1={y(v)} y2={y(v)} stroke="var(--line)" strokeWidth="1" />
+                  <text x={L - 8} y={y(v) + 4} textAnchor="end" className="ct">{v}</text>
+                </g>
+              ))}
+              {subjects.map((s, i) => {
+                const p = pctOf(s.attended, s.conducted);
+                const cx = L + slot * i + slot / 2;
+                const top = y(p);
+                const st = statusOf(s);
+                const show = () => setTip({ s, cx, p });
+                return (
+                  <g key={s.id} className="barg" tabIndex={0} role="link" aria-label={`${s.name}: ${p.toFixed(2)} percent. Open details`}
+                    onClick={() => go('subject-' + s.id)} onKeyDown={(e) => e.key === 'Enter' && go('subject-' + s.id)}
+                    onMouseEnter={show} onMouseLeave={() => setTip(null)} onFocus={show} onBlur={() => setTip(null)}>
+                    <rect x={cx - slot / 2} y={T} width={slot} height={H - T - B} fill="transparent" />
+                    <rect x={cx - bw / 2} y={top} width={bw} height={Math.max(0, y(0) - top)} rx="4" fill={`var(--${st}-bar)`} style={{ transition: 'y .5s, height .5s' }} />
+                    <line x1={cx - bw / 2 - 5} x2={cx + bw / 2 + 5} y1={y(s.required)} y2={y(s.required)} stroke="var(--fg)" strokeWidth="2" strokeDasharray="3 2" />
+                    <text x={cx} y={Math.max(top - 6, 12)} textAnchor="middle" className="cv">{p.toFixed(1)}</text>
+                    <text x={cx} y={H - 10} textAnchor="middle" className="ct">{shortName(s)}</text>
+                  </g>
+                );
+              })}
+            </svg>
+          )}
+          {tip && (
+            <div className="tip" style={{ left: Math.min(Math.max(tip.cx, 90), W - 90) }}>
+              <b>{tip.s.name}</b><br />{tip.p.toFixed(2)}% (min {tip.s.required}%)
+            </div>
+          )}
+        </div>
+      </div>
+      <div className="legend" style={{ marginTop: 8 }}>
+        <span><i className="dot" style={{ background: 'var(--good-bar)' }} />Safe</span>
+        <span><i className="dot" style={{ background: 'var(--warn-bar)' }} />Close to limit</span>
+        <span><i className="dot" style={{ background: 'var(--bad-bar)' }} />Below minimum</span>
+        <span><i className="dot" style={{ background: 'var(--fg)', height: 3, verticalAlign: 3 }} />Dashed tick = required %</span>
+      </div>
+    </div>
+  );
+}
+
+function Trend({ s }) {
+  const [ref, w] = useWidth();
+  const pts = trendSeries(s);
+  const H = 180, L = 36, R = 14, T = 14, B = 26;
+  if (pts.length < 2) return <div ref={ref} style={{ width: '100%' }}><p className="muted" style={{ padding: '24px 0' }}>Mark a few classes and the trend appears here.</p></div>;
+  const vals = pts.map((p) => p.pct).concat(s.required);
+  const lo = Math.max(0, Math.floor((Math.min(...vals) - 5) / 20) * 20);
+  const ticks = []; for (let v = lo; v <= 100; v += 20) ticks.push(v);
+  const x = (i) => L + (w - L - R) * (i / (pts.length - 1));
+  const y = (v) => T + (H - T - B) * (1 - (v - lo) / (100 - lo));
+  const line = pts.map((p, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(p.pct).toFixed(1)}`).join(' ');
+  const area = `${line} L${x(pts.length - 1).toFixed(1)},${y(lo)} L${x(0).toFixed(1)},${y(lo)} Z`;
+  const last = pts[pts.length - 1];
+  const first = pts[0];
+  const st = statusOf(s);
+  return (
+    <div ref={ref} style={{ width: '100%' }}>
+      {w > 0 && (
+        <svg width={w} height={H} role="img" aria-label="Attendance percentage over time">
+          {ticks.map((v) => (
+            <g key={v}>
+              <line x1={L} x2={w - R} y1={y(v)} y2={y(v)} stroke="var(--line)" strokeWidth="1" />
+              <text x={L - 8} y={y(v) + 4} textAnchor="end" className="ct">{v}</text>
+            </g>
+          ))}
+          <line x1={L} x2={w - R} y1={y(s.required)} y2={y(s.required)} stroke="var(--fg)" strokeWidth="1.5" strokeDasharray="4 3" />
+          <text x={w - R} y={y(s.required) - 5} textAnchor="end" className="ct">required {s.required}%</text>
+          <path d={area} fill="var(--accent)" opacity="0.12" />
+          <path d={line} fill="none" stroke="var(--accent)" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
+          <circle cx={x(pts.length - 1)} cy={y(last.pct)} r="6" fill={`var(--${st}-bar)`} stroke="var(--card)" strokeWidth="2" />
+          <text x={L} y={H - 8} className="ct">{first.date ? fmtDate(first.date) : 'Start'}</text>
+          <text x={w - R} y={H - 8} textAnchor="end" className="ct">{last.date ? fmtDate(last.date) : ''}</text>
+        </svg>
+      )}
+    </div>
+  );
+}
+
+/* ---------- subject card + prediction ---------- */
+function Stat({ label, value }) {
+  return <div className="cell"><span>{label}</span><b>{value}</b></div>;
+}
+const fmtNeed = (n) => (n === Infinity ? 'Not possible' : n);
+const fmtMiss = (n) => (n === Infinity ? 'Any' : n);
+
+function SubjectCard({ s, onMark }) {
+  const st = statusOf(s);
+  const a = s.attended, t = s.conducted, missed = t - a;
+  const need = needToAttend(a, t, s.required), can = canMiss(a, t, s.required);
+  return (
+    <article className="card sc">
+      <div className="flex items-start justify-between gap-3">
+        <div style={{ minWidth: 0 }}>
+          <h3><a href={'#subject-' + s.id}>{s.name}</a></h3>
+          {s.code && <div className="code">{s.code}</div>}
+        </div>
+        <Pill st={st} />
+      </div>
+      <div>
+        <div className="flex items-baseline justify-between gap-2" style={{ marginBottom: 8 }}>
+          <span className="big num">{fmtPct(a, t)}</span>
+          <span className="muted num" style={{ fontSize: 13 }}>min {s.required}%</span>
+        </div>
+        <ProgressBar s={s} />
+      </div>
+      <div className="cells">
+        <Stat label="Attended" value={`${a} / ${t}`} />
+        <Stat label="Missed" value={missed} />
+        <Stat label={`Attend to reach ${s.required}%`} value={fmtNeed(need)} />
+        <Stat label={`Can still miss`} value={fmtMiss(can)} />
+      </div>
+      {st === 'bad' && <div className="note note-bad"><b>Below {s.required}%.</b> {need === Infinity ? 'This minimum cannot be reached any more.' : `Attend the next ${need} ${plural(need, 'class', 'classes')} in a row to recover.`}</div>}
+      {st === 'warn' && <div className="note note-warn"><b>Close to the limit.</b> You can miss only {can} more {plural(can, 'class', 'classes')}.</div>}
+      <div className="act-row">
+        <button className="act act-present" onClick={() => onMark(s.id, 'present')}><Icon n="check" />Present</button>
+        <button className="act act-absent" onClick={() => onMark(s.id, 'absent')}><Icon n="x" />Absent</button>
+      </div>
+    </article>
+  );
+}
+
+function Goal({ s, x, label }) {
+  const a = s.attended, t = s.conducted;
+  if (t === 0) return <div className="goal"><div className="goal-h"><span>{label}</span></div><p className="muted">Record your first class to see predictions.</p></div>;
+  const below = a * 100 < x * t - 1e-9;
+  const need = needToAttend(a, t, x), can = canMiss(a, t, x);
+  return (
+    <div className="goal">
+      <div className="goal-h"><span>{label}</span><span className="num muted">{fmtPct(a, t)} now</span></div>
+      <div className="cells" style={{ marginBottom: 10 }}>
+        <Stat label="Attend in a row" value={fmtNeed(need)} />
+        <Stat label="Can miss in a row" value={below ? 0 : fmtMiss(can)} />
+      </div>
+      {below
+        ? (need === Infinity
+          ? <div className="note note-bad">Reaching {x}% is not possible, because earlier absences cannot be undone.</div>
+          : <div className="note note-bad">Attend the next <b>{need}</b> {plural(need, 'class', 'classes')} in a row to reach {x}%. Missing any class makes it longer.</div>)
+        : <div className="note note-good">You are at or above {x}%. You can miss <b>{can === Infinity ? 'any number of' : can}</b> {can === Infinity ? 'classes' : plural(can, 'class', 'classes')} in a row and stay at or above {x}%.</div>}
+    </div>
+  );
+}
+
+function Prediction({ s }) {
+  const [target, setTarget] = useState('85');
+  const x = Number(target);
+  const valid = target !== '' && x > 0 && x <= 100;
+  return (
+    <div className="grid gap-3">
+      <Goal s={s} x={s.required} label={`Required minimum (${s.required}%)`} />
+      <div>
+        <label className="lbl" htmlFor="target">Your target %</label>
+        <div className="flex gap-2 flex-wrap items-center">
+          <input id="target" className="input num" style={{ width: 110 }} type="number" min="1" max="100" step="any" value={target} onChange={(e) => setTarget(e.target.value)} />
+          <div className="chips">
+            {[80, 85, 90].map((v) => <button key={v} className={'chip' + (x === v ? ' on' : '')} onClick={() => setTarget(String(v))}>{v}%</button>)}
+          </div>
+        </div>
+      </div>
+      {valid ? <Goal s={s} x={x} label={`Target (${x}%)`} /> : <p className="err">Enter a target between 1 and 100.</p>}
+    </div>
+  );
+}
+
+/* ---------- pages ---------- */
+function Dashboard({ data, onMark, onAdd, onLoadSample, onClearSample, onKeepSample }) {
+  const subs = data.subjects;
+  const T = subs.reduce((n, s) => n + s.conducted, 0);
+  const A = subs.reduce((n, s) => n + s.attended, 0);
+  const overall = { attended: A, conducted: T, required: DEFAULT_MIN };
+  const below = subs.filter((s) => statusOf(s) === 'bad');
+  return (
+    <div>
+      {data.sample && subs.length > 0 && (
+        <div className="note note-info flex flex-wrap items-center justify-between gap-3" style={{ marginBottom: 16 }}>
+          <span><b>Example data.</b> These subjects are samples. Replace them with your own timetable.</span>
+          <span className="flex gap-2 flex-wrap">
+            <button className="btn btn-sm" onClick={onKeepSample}>Keep them</button>
+            <button className="btn btn-sm btn-danger" onClick={onClearSample}>Clear examples</button>
+          </span>
+        </div>
+      )}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+        <div className="card tile col-span-2 md:col-span-1">
+          <span className="lbl">Overall attendance</span>
+          <div className="big num" style={{ margin: '4px 0 10px' }}>{fmtPct(A, T)}</div>
+          <div style={{ marginBottom: 10 }}><ProgressBar s={overall} /></div>
+          <Pill st={statusOf(overall)} />
+        </div>
+        <div className="card tile"><span className="lbl">Classes conducted</span><div className="v">{T}</div></div>
+        <div className="card tile"><span className="lbl">Classes attended</span><div className="v" style={{ color: 'var(--good)' }}>{A}</div></div>
+        <div className="card tile"><span className="lbl">Classes missed</span><div className="v" style={{ color: T - A > 0 ? 'var(--bad)' : undefined }}>{T - A}</div></div>
+        <div className="card tile"><span className="lbl">Subjects</span><div className="v">{subs.length}</div></div>
+      </div>
+
+      {below.length > 0 && (
+        <div className="note note-bad" style={{ marginTop: 14 }}>
+          <b>{below.length} {plural(below.length, 'subject is', 'subjects are')} below the minimum:</b>{' '}
+          {below.map((s, i) => <span key={s.id}>{i > 0 && ', '}<a href={'#subject-' + s.id}>{s.name}</a></span>)}.
+        </div>
+      )}
+
+      {subs.length === 0 ? (
+        <div className="card empty" style={{ marginTop: 20 }}>
+          <h2 style={{ fontSize: 22, marginBottom: 8 }}>No subjects yet</h2>
+          <p className="muted" style={{ marginBottom: 18 }}>Add the subjects from your timetable, then tap Present or Absent after each class.</p>
+          <div className="flex gap-2 justify-center flex-wrap">
+            <button className="btn btn-primary" onClick={onAdd}><Icon n="plus" />Add your first subject</button>
+            <button className="btn" onClick={onLoadSample}>Load example subjects</button>
+          </div>
+        </div>
+      ) : (
+        <>
+          <div className="grid gap-3 lg:grid-cols-[220px_minmax(0,1fr)]" style={{ marginTop: 14 }}>
+            <div className="card p-4 flex flex-col items-center justify-center gap-2">
+              <span className="lbl" style={{ margin: 0 }}>Attended vs missed</span>
+              <Donut a={A} t={T} />
+              <div className="legend"><span><i className="dot" style={{ background: 'var(--accent)' }} />Attended</span><span><i className="dot" style={{ background: 'var(--bad-bar)' }} />Missed</span></div>
+            </div>
+            <div className="card p-4">
+              <span className="lbl">Attendance by subject</span>
+              <BarChart subjects={subs} />
+            </div>
+          </div>
+          <div className="sec-h">
+            <h2>Subjects</h2>
+            <button className="btn btn-primary" onClick={onAdd}><Icon n="plus" />Add subject</button>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {subs.map((s) => <SubjectCard key={s.id} s={s} onMark={onMark} />)}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function SubjectsPage({ data, onAdd, onEdit, onReset, onDelete }) {
+  return (
+    <div>
+      <div className="sec-h" style={{ marginTop: 0 }}>
+        <h2>Manage subjects</h2>
+        <button className="btn btn-primary" onClick={onAdd}><Icon n="plus" />Add subject</button>
+      </div>
+      {data.subjects.length === 0 && <div className="card empty muted">No subjects yet. Add one to get started.</div>}
+      <div className="grid gap-3">
+        {data.subjects.map((s) => {
+          const st = statusOf(s);
+          return (
+            <div key={s.id} className="card mrow">
+              <div style={{ minWidth: 0 }}>
+                <a href={'#subject-' + s.id} style={{ fontWeight: 600, fontSize: 16, textDecoration: 'none' }}>{s.name}</a>
+                <div className="code">{s.code || 'No code'} · minimum {s.required}%</div>
+              </div>
+              <div className="flex items-center gap-3 flex-wrap">
+                <span className="num" style={{ fontWeight: 600 }}>{fmtPct(s.attended, s.conducted)}</span>
+                <span className="num muted" style={{ fontSize: 13 }}>{s.attended}/{s.conducted} · missed {s.conducted - s.attended}</span>
+                <Pill st={st} />
+              </div>
+              <div className="flex gap-2 flex-wrap">
+                <button className="btn btn-sm" onClick={() => onEdit(s)}><Icon n="edit" s={15} />Edit</button>
+                <button className="btn btn-sm" onClick={() => onReset(s)}><Icon n="reset" s={15} />Reset</button>
+                <button className="btn btn-sm btn-danger" onClick={() => onDelete(s)}><Icon n="trash" s={15} />Delete</button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function RecRow({ s, r, onEdit, showSubject }) {
+  return (
+    <div className="rec">
+      <span className="num rec-d">{fmtDate(r.date)}</span>
+      {showSubject && <a className="rec-s" href={'#subject-' + s.id}>{s.name}</a>}
+      <span className={'pill ' + (r.status === 'present' ? 'pill-good' : 'pill-bad')}>{r.status === 'present' ? 'Present' : 'Absent'}</span>
+      <button className="btn btn-sm" onClick={() => onEdit(s.id, r.id)}><Icon n="edit" s={15} />Edit</button>
+    </div>
+  );
+}
+
+function HistoryPage({ data, onEditRecord }) {
+  const [subj, setSubj] = useState('all');
+  const [stat, setStat] = useState('all');
+  const items = [];
+  data.subjects.forEach((s) => s.history.forEach((r) => {
+    if ((subj === 'all' || subj === s.id) && (stat === 'all' || stat === r.status)) items.push({ s, r });
+  }));
+  items.sort((p, q) => (p.r.date === q.r.date ? (q.r.ts || 0) - (p.r.ts || 0) : p.r.date < q.r.date ? 1 : -1));
+  return (
+    <div>
+      <div className="sec-h" style={{ marginTop: 0 }}><h2>Attendance history</h2></div>
+      <div className="flex gap-3 flex-wrap" style={{ marginBottom: 14 }}>
+        <div style={{ flex: '1 1 220px' }}>
+          <label className="lbl" htmlFor="f-subject">Subject</label>
+          <select id="f-subject" className="input" value={subj} onChange={(e) => setSubj(e.target.value)}>
+            <option value="all">All subjects</option>
+            {data.subjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </select>
+        </div>
+        <div style={{ flex: '1 1 160px' }}>
+          <label className="lbl" htmlFor="f-status">Status</label>
+          <select id="f-status" className="input" value={stat} onChange={(e) => setStat(e.target.value)}>
+            <option value="all">Present and absent</option>
+            <option value="present">Present only</option>
+            <option value="absent">Absent only</option>
+          </select>
+        </div>
+      </div>
+      <div className="card" style={{ overflow: 'hidden' }}>
+        {items.length === 0
+          ? <div className="empty muted">No records yet. Tap Present or Absent on a subject to start the log.</div>
+          : items.map(({ s, r }) => <RecRow key={r.id} s={s} r={r} showSubject onEdit={onEditRecord} />)}
+      </div>
+      <p className="muted" style={{ marginTop: 10, fontSize: 13 }}>Classes entered as starting totals when adding a subject are not listed here. Editing an entry updates the subject's totals.</p>
+    </div>
+  );
+}
+
+function Detail({ s, onMark, onEditSubject, onReset, onDelete, onCorrect, onEditRecord }) {
+  const [date, setDate] = useState(todayStr());
+  const [cc, setCc] = useState({ c: String(s.conducted), a: String(s.attended) });
+  const [cErr, setCErr] = useState('');
+  useEffect(() => setCc({ c: String(s.conducted), a: String(s.attended) }), [s.conducted, s.attended]);
+  const st = statusOf(s);
+  const a = s.attended, t = s.conducted;
+  const need = needToAttend(a, t, s.required), can = canMiss(a, t, s.required);
+  const hist = sortHist(s.history, false);
+  const submitCorrect = (e) => {
+    e.preventDefault();
+    if (!/^\d+$/.test(cc.c) || !/^\d+$/.test(cc.a)) return setCErr('Enter whole numbers, 0 or more.');
+    if (+cc.a > +cc.c) return setCErr('Attended cannot be more than conducted.');
+    setCErr('');
+    onCorrect(s.id, +cc.c, +cc.a);
+  };
+  const validDate = /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : todayStr();
+  return (
+    <div className="grid gap-4">
+      <a href="#" className="btn btn-sm" style={{ justifySelf: 'start' }}><Icon n="back" s={16} />Dashboard</a>
+      <div className="card p-5 grid gap-4">
+        <div className="flex items-start justify-between gap-3 flex-wrap">
+          <div style={{ minWidth: 0 }}>
+            <h1 style={{ fontSize: 28 }}>{s.name}</h1>
+            <div className="code" style={{ fontSize: 13 }}>{s.code || 'No subject code'}</div>
+          </div>
+          <Pill st={st} />
+        </div>
+        <div>
+          <div className="flex items-baseline justify-between gap-2" style={{ marginBottom: 8 }}>
+            <span className="big num" style={{ fontSize: 40 }}>{fmtPct(a, t)}</span>
+            <span className="muted num">minimum {s.required}%</span>
+          </div>
+          <ProgressBar s={s} />
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+          <Stat label="Conducted" value={t} />
+          <Stat label="Attended" value={a} />
+          <Stat label="Missed" value={t - a} />
+          <Stat label={`Attend to reach ${s.required}%`} value={fmtNeed(need)} />
+        </div>
+        {st === 'bad' && <div className="note note-bad"><b>Warning: below {s.required}%.</b> {need === Infinity ? 'This minimum cannot be reached any more.' : `Attend the next ${need} ${plural(need, 'class', 'classes')} in a row to recover.`}</div>}
+        {st === 'warn' && <div className="note note-warn"><b>Close to the limit.</b> You can miss only {can} more {plural(can, 'class', 'classes')} before dropping below {s.required}%.</div>}
+        {st === 'good' && <div className="note note-good">You can miss up to <b>{can === Infinity ? 'any number of' : can}</b> {can === Infinity ? 'classes' : plural(can, 'class', 'classes')} in a row and stay at or above {s.required}%.</div>}
+      </div>
+
+      <div className="card p-5 grid gap-3">
+        <div className="flex gap-3 items-end flex-wrap">
+          <div>
+            <label className="lbl" htmlFor="mark-date">Class date</label>
+            <input id="mark-date" className="input num" type="date" max={todayStr()} value={date} onChange={(e) => setDate(e.target.value)} />
+          </div>
+          <p className="muted" style={{ fontSize: 13, paddingBottom: 10 }}>Pick an earlier date to log a class you forgot to mark.</p>
+        </div>
+        <div className="act-row">
+          <button className="act act-present" onClick={() => onMark(s.id, 'present', validDate)}><Icon n="check" />Present</button>
+          <button className="act act-absent" onClick={() => onMark(s.id, 'absent', validDate)}><Icon n="x" />Absent</button>
+        </div>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <div className="card p-5">
+          <h2 style={{ fontSize: 18, marginBottom: 12 }}>Attendance prediction</h2>
+          <Prediction s={s} />
+        </div>
+        <div className="card p-5">
+          <h2 style={{ fontSize: 18, marginBottom: 12 }}>Trend</h2>
+          <Trend s={s} />
+        </div>
+      </div>
+
+      <div className="card" style={{ overflow: 'hidden' }}>
+        <h2 style={{ fontSize: 18, padding: '16px 16px 12px' }}>History</h2>
+        <div style={{ borderTop: '1px solid var(--line)' }}>
+          {hist.length === 0
+            ? <div className="empty muted">No entries yet.</div>
+            : hist.map((r) => <RecRow key={r.id} s={s} r={r} onEdit={onEditRecord} />)}
+        </div>
+      </div>
+
+      <div className="card p-5">
+        <h2 style={{ fontSize: 18, marginBottom: 4 }}>Correct totals manually</h2>
+        <p className="muted" style={{ fontSize: 13, marginBottom: 12 }}>Use this if the totals are wrong. It changes the numbers directly and leaves the history list as it is.</p>
+        <form onSubmit={submitCorrect} noValidate className="flex gap-3 flex-wrap items-end">
+          <div style={{ width: 130 }}>
+            <label className="lbl" htmlFor="cc-c">Conducted</label>
+            <input id="cc-c" className="input num" type="number" min="0" step="1" value={cc.c} onChange={(e) => setCc({ ...cc, c: e.target.value })} />
+          </div>
+          <div style={{ width: 130 }}>
+            <label className="lbl" htmlFor="cc-a">Attended</label>
+            <input id="cc-a" className="input num" type="number" min="0" step="1" value={cc.a} onChange={(e) => setCc({ ...cc, a: e.target.value })} />
+          </div>
+          <button className="btn btn-primary" type="submit">Save correction</button>
+        </form>
+        {cErr && <div className="err">{cErr}</div>}
+      </div>
+
+      <div className="flex gap-2 flex-wrap">
+        <button className="btn" onClick={() => onEditSubject(s)}><Icon n="edit" s={16} />Edit subject</button>
+        <button className="btn" onClick={() => onReset(s)}><Icon n="reset" s={16} />Reset attendance</button>
+        <button className="btn btn-danger" onClick={() => onDelete(s)}><Icon n="trash" s={16} />Delete subject</button>
+      </div>
+    </div>
+  );
+}
+
+function DataPage({ data, setAll, merge, notify, askConfirm }) {
+  const [fmt, setFmt] = useState('csv');
+  const [paste, setPaste] = useState('');
+  const [pending, setPending] = useState(null);
+  const [problem, setProblem] = useState('');
+  const [snap, setSnap] = useState(() => { try { return JSON.parse(localStorage.getItem(SNAP_KEY)); } catch (e) { return null; } });
+  const taRef = useRef(null);
+  const text = fmt === 'csv' ? toCSV(data.subjects) : toJSONBackup(data.subjects);
+  const records = (subs) => subs.reduce((n, s) => n + s.history.length, 0);
+
+  const doDownload = () => {
+    const stamp = todayStr();
+    if (fmt === 'csv') download(`attendance-${stamp}.csv`, '\uFEFF' + text, 'text/csv;charset=utf-8');
+    else download(`attendance-backup-${stamp}.json`, text, 'application/json');
+    notify('Download started. If nothing downloads, use Copy and paste into a file.');
+  };
+  const doCopy = async () => {
+    const ok = await copyText(text);
+    if (ok) notify('Copied to clipboard');
+    else { if (taRef.current) taRef.current.select(); notify('Copy is blocked here. The text is selected, so copy it manually.'); }
+  };
+  const read = (txt) => {
+    try { const subs = parseImport(txt); setPending(subs); setProblem(''); }
+    catch (e) { setPending(null); setProblem(e.message); }
+  };
+  const onFile = (e) => {
+    const f = e.target.files && e.target.files[0];
+    if (!f) return;
+    const fr = new FileReader();
+    fr.onload = () => read(String(fr.result || ''));
+    fr.onerror = () => setProblem('That file could not be read.');
+    fr.readAsText(f);
+    e.target.value = '';
+  };
+  const saveSnap = () => {
+    const v = { savedAt: new Date().toISOString(), subjects: data.subjects };
+    try { localStorage.setItem(SNAP_KEY, JSON.stringify(v)); setSnap(v); notify('Snapshot saved in this browser'); }
+    catch (e) { notify('This browser would not store the snapshot.'); }
+  };
+  const restoreSnap = () => askConfirm({
+    title: 'Restore snapshot?', body: 'Your current subjects and history will be replaced by the saved snapshot.', label: 'Restore', danger: true,
+    onYes: () => { try { setAll(snap.subjects.map(cleanSubject)); notify('Snapshot restored'); } catch (e) { notify('The snapshot could not be read.'); } },
+  });
+  const wipe = () => askConfirm({
+    title: 'Delete all data?', body: 'This removes every subject and attendance record from this browser. Export a backup first if you might need it.', label: 'Delete everything', danger: true,
+    onYes: () => { setAll([]); notify('All data deleted'); },
+  });
+
+  return (
+    <div className="grid gap-4">
+      <div className="sec-h" style={{ margin: 0 }}><h2>Export, import and backup</h2></div>
+      <p className="muted" style={{ marginTop: -8 }}>Your data lives in this browser only. Export a file now and then, especially before clearing site data.</p>
+
+      <div className="card p-5 grid gap-3">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <h3 style={{ fontSize: 18 }}>Export</h3>
+          <div className="seg" role="group" aria-label="Export format">
+            <button className={fmt === 'csv' ? 'on' : ''} onClick={() => setFmt('csv')}>CSV</button>
+            <button className={fmt === 'json' ? 'on' : ''} onClick={() => setFmt('json')}>JSON backup</button>
+          </div>
+        </div>
+        <p className="muted" style={{ fontSize: 13 }}>{fmt === 'csv' ? 'One row per subject plus one row per attendance record. Opens in Excel or Google Sheets.' : 'A complete backup you can restore here later.'}</p>
+        <textarea ref={taRef} id="export-text" className="input" rows={6} readOnly value={text} aria-label="Export preview" />
+        <div className="flex gap-2 flex-wrap">
+          <button className="btn btn-primary" onClick={doDownload}><Icon n="down" s={16} />Download {fmt === 'csv' ? '.csv' : '.json'}</button>
+          <button className="btn" onClick={doCopy}><Icon n="copy" s={16} />Copy</button>
+        </div>
+      </div>
+
+      <div className="card p-5 grid gap-3">
+        <h3 style={{ fontSize: 18 }}>Import or restore</h3>
+        <p className="muted" style={{ fontSize: 13 }}>Choose a CSV or JSON file exported from this calculator, or paste its contents.</p>
+        <div>
+          <label className="lbl" htmlFor="import-file">File</label>
+          <input id="import-file" className="input" type="file" accept=".csv,.json,.txt,text/csv,application/json" onChange={onFile} />
+        </div>
+        <div>
+          <label className="lbl" htmlFor="import-paste">Or paste here</label>
+          <textarea id="import-paste" className="input" rows={4} value={paste} onChange={(e) => setPaste(e.target.value)} placeholder="record_type,subject_name,..." />
+        </div>
+        <div><button className="btn" onClick={() => read(paste)} disabled={!paste.trim()}>Read pasted data</button></div>
+        {problem && <div className="note note-bad">{problem}</div>}
+        {pending && (
+          <div className="note note-info grid gap-3">
+            <span>Found <b>{pending.length}</b> {plural(pending.length, 'subject', 'subjects')} and <b>{records(pending)}</b> history {plural(records(pending), 'record', 'records')}.</span>
+            <div className="flex gap-2 flex-wrap">
+              <button className="btn btn-solid-danger" onClick={() => askConfirm({
+                title: 'Replace all current data?', body: 'Everything you have now will be replaced by the imported subjects.', label: 'Replace', danger: true,
+                onYes: () => { setAll(pending); setPending(null); setPaste(''); notify('Data imported'); },
+              })}>Replace current data</button>
+              <button className="btn btn-primary" onClick={() => { merge(pending); setPending(null); setPaste(''); notify('Imported subjects merged'); }}>Merge with current data</button>
+              <button className="btn" onClick={() => setPending(null)}>Cancel</button>
+            </div>
+            <span className="muted" style={{ fontSize: 13 }}>Merging replaces a subject that has the same name and code, and adds the rest.</span>
+          </div>
+        )}
+      </div>
+
+      <div className="card p-5 grid gap-3">
+        <h3 style={{ fontSize: 18 }}>Browser snapshot</h3>
+        <p className="muted" style={{ fontSize: 13 }}>Keep one saved copy inside this browser and roll back to it if you make a mistake.</p>
+        <p className="num" style={{ fontSize: 13 }}>{snap && snap.savedAt ? `Saved ${new Date(snap.savedAt).toLocaleString('en-IN')} · ${snap.subjects.length} subjects` : 'No snapshot saved yet.'}</p>
+        <div className="flex gap-2 flex-wrap">
+          <button className="btn btn-primary" onClick={saveSnap}>Save snapshot now</button>
+          <button className="btn" onClick={restoreSnap} disabled={!snap}>Restore snapshot</button>
+        </div>
+      </div>
+
+      <div className="card p-5 flex items-center justify-between gap-3 flex-wrap">
+        <div><h3 style={{ fontSize: 18 }}>Delete all data</h3><p className="muted" style={{ fontSize: 13 }}>Clears every subject and record from this browser.</p></div>
+        <button className="btn btn-danger" onClick={wipe}><Icon n="trash" s={16} />Delete everything</button>
+      </div>
+    </div>
+  );
+}
+
+/* ---------- timetable (stored separately from attendance data) ---------- */
+const TT_KEY = 'collegeAttendance.timetable.v1';
+const TT_FILE_KEY = 'collegeAttendance.timetableFile.v1';
+const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+const TT_MAX_FILE = 10 * 1024 * 1024;
+
+const toMin = (t) => { const m = /^(\d{1,2}):(\d{2})$/.exec(String(t || '')); if (!m || +m[1] > 23 || +m[2] > 59) return NaN; return +m[1] * 60 + +m[2]; };
+const fmtTime = (t) => { const m = toMin(t); if (isNaN(m)) return String(t || ''); const h = Math.floor(m / 60); return `${h % 12 || 12}:${pad(m % 60)} ${h < 12 ? 'AM' : 'PM'}`; };
+const todayDay = () => DAYS[(new Date().getDay() + 6) % 7];
+const eid = () => 't' + Math.random().toString(36).slice(2, 9) + Date.now().toString(36).slice(-3);
+
+function cleanEntry(e) {
+  if (!e) return null;
+  const subject = String(e.subject || '').trim().slice(0, 80);
+  const day = DAYS.find((d) => d === e.day);
+  const start = String(e.start || ''), end = String(e.end || '');
+  if (!subject || !day || isNaN(toMin(start)) || isNaN(toMin(end)) || toMin(end) <= toMin(start)) return null;
+  return { id: String(e.id || eid()), subject, day, start, end, room: String(e.room || '').trim().slice(0, 40), source: e.source === 'all' ? 'all' : 'individual' };
+}
+function loadTT() {
+  try {
+    const raw = localStorage.getItem(TT_KEY);
+    if (raw) { const o = JSON.parse(raw); if (o && Array.isArray(o.entries)) return o.entries.map(cleanEntry).filter(Boolean); }
+  } catch (e) {}
+  return [];
+}
+function loadTTFile() {
+  try {
+    const raw = localStorage.getItem(TT_FILE_KEY);
+    if (raw) { const f = JSON.parse(raw); if (f && f.name && f.kind) return f; }
+  } catch (e) {}
+  return null;
+}
+const sortEntries = (arr) => [...arr].sort((a, b) => toMin(a.start) - toMin(b.start) || toMin(a.end) - toMin(b.end) || a.subject.localeCompare(b.subject));
+const overlaps = (a, b) => a.day === b.day && toMin(a.start) < toMin(b.end) && toMin(b.start) < toMin(a.end);
+
+/* ---- reading an uploaded spreadsheet (best effort) ---- */
+const DAY_WORDS = (() => {
+  const m = {};
+  DAYS.forEach((d) => { m[d.toLowerCase()] = d; m[d.slice(0, 3).toLowerCase()] = d; });
+  m.tues = 'Tuesday'; m.thur = 'Thursday'; m.thurs = 'Thursday';
+  return m;
+})();
+const dayFrom = (v) => DAY_WORDS[String(v == null ? '' : v).trim().toLowerCase().replace(/\.$/, '')] || null;
+function hhmm(h, m) { return `${pad(h)}:${pad(m)}`; }
+function parseTime(v) {
+  if (typeof v === 'number') {
+    if (v >= 0 && v < 1) { const mins = Math.round(v * 1440); return hhmm(Math.floor(mins / 60) % 24, mins % 60); }
+    return null;
+  }
+  const m = /^(\d{1,2})(?:[:.](\d{2}))?\s*(am|pm|a\.m\.|p\.m\.)?$/i.exec(String(v == null ? '' : v).trim());
+  if (!m) return null;
+  let h = +m[1]; const min = m[2] ? +m[2] : 0; const ap = m[3] ? m[3][0].toLowerCase() : '';
+  if (min > 59 || h > 23) return null;
+  if (ap === 'p' && h < 12) h += 12;
+  else if (ap === 'a' && h === 12) h = 0;
+  else if (!ap && h >= 1 && h <= 6) h += 12; // no am/pm: 1 to 6 is read as afternoon
+  return hhmm(h, min);
+}
+function parseRange(v) {
+  const parts = String(v == null ? '' : v).split(/\s*(?:-|–|—|\bto\b)\s*/i).filter(Boolean);
+  if (parts.length !== 2) return null;
+  const a = parseTime(parts[0]), b = parseTime(parts[1]);
+  return a && b && toMin(b) > toMin(a) ? [a, b] : null;
+}
+function splitSubjectRoom(text) {
+  const lines = String(text).split(/\r?\n/).map((x) => x.trim()).filter(Boolean);
+  let subject = lines[0] || '', room = lines.slice(1).join(' ');
+  const p = /\(([^)]+)\)\s*$/.exec(subject);
+  if (p) { room = room || p[1]; subject = subject.replace(p[0], '').trim(); }
+  return { subject: subject.slice(0, 80), room: room.slice(0, 40) };
+}
+function parseSheetRows(rows) {
+  const cells = (r) => (r || []).map((c) => (typeof c === 'number' ? c : String(c == null ? '' : c).trim()));
+  const out = [];
+  // Format A: a list with columns such as Subject, Day, Start, End, Room
+  for (let i = 0; i < Math.min(rows.length, 10); i++) {
+    const h = cells(rows[i]).map((c) => String(c).toLowerCase());
+    const find = (rx) => h.findIndex((c) => rx.test(c));
+    const ci = { subj: find(/subject|course|paper|^name/), day: find(/^day/), start: find(/start|from|begin/), end: find(/^end|^to$|until/), time: find(/^time|timing/), room: find(/room|venue|hall|location/) };
+    if (ci.subj >= 0 && ci.day >= 0 && (ci.start >= 0 || ci.time >= 0)) {
+      rows.slice(i + 1).forEach((r) => {
+        const c = cells(r);
+        const day = dayFrom(c[ci.day]);
+        let s = null, e = null;
+        if (ci.start >= 0 && ci.end >= 0) { s = parseTime(c[ci.start]); e = parseTime(c[ci.end]); }
+        else if (ci.time >= 0) { const rg = parseRange(c[ci.time]); if (rg) [s, e] = rg; }
+        const subject = String(c[ci.subj] || '').trim();
+        if (day && s && e && subject && toMin(e) > toMin(s)) out.push({ subject: subject.slice(0, 80), day, start: s, end: e, room: ci.room >= 0 ? String(c[ci.room] || '').slice(0, 40) : '' });
+      });
+      if (out.length) return out;
+    }
+  }
+  // Format B: a grid with days across the top and time ranges down the side
+  for (let i = 0; i < Math.min(rows.length, 10); i++) {
+    const c = cells(rows[i]);
+    const dayCols = c.map((x, j) => ({ j, d: dayFrom(x) })).filter((x) => x.d);
+    if (dayCols.length < 2) continue;
+    rows.slice(i + 1).forEach((r) => {
+      const cc = cells(r);
+      let range = null;
+      for (let j = 0; j < dayCols[0].j && !range; j++) range = parseRange(cc[j]);
+      if (!range) return;
+      dayCols.forEach(({ j, d }) => {
+        const txt = String(cc[j] == null ? '' : cc[j]).trim();
+        if (!txt || /^(lunch|break|recess|free|-+)$/i.test(txt)) return;
+        const { subject, room } = splitSubjectRoom(txt);
+        if (subject) out.push({ subject, day: d, start: range[0], end: range[1], room });
+      });
+    });
+    if (out.length) return out;
+  }
+  return out;
+}
+function blobFromDataUrl(dataUrl, type) {
+  const b64 = String(dataUrl).split(',')[1] || '';
+  const bin = atob(b64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new Blob([bytes], { type });
+}
+
+/* ---------- timetable UI ---------- */
+function TTEntryModal({ entry, subjectNames, onSave, onClose }) {
+  const [f, setF] = useState({ subject: entry.subject || '', day: entry.day || todayDay(), start: entry.start || '', end: entry.end || '', room: entry.room || '' });
+  const [err, setErr] = useState({});
+  const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
+  const submit = (e) => {
+    e.preventDefault();
+    const er = {};
+    if (!f.subject.trim()) er.subject = 'Enter a subject name.';
+    if (!DAYS.includes(f.day)) er.day = 'Choose a day.';
+    if (isNaN(toMin(f.start))) er.start = 'Choose a start time.';
+    if (isNaN(toMin(f.end))) er.end = 'Choose an end time.';
+    else if (!er.start && toMin(f.end) <= toMin(f.start)) er.end = 'End time must be after the start time.';
+    setErr(er);
+    if (Object.keys(er).length) return;
+    onSave({ ...entry, subject: f.subject.trim(), day: f.day, start: f.start, end: f.end, room: f.room.trim() });
+  };
+  return (
+    <Modal onClose={onClose} label={entry.id ? 'Edit class' : 'Add class'}>
+      <h2>{entry.id ? 'Edit class' : 'Add class'}</h2>
+      <form onSubmit={submit} noValidate className="grid gap-4">
+        <div>
+          <label className="lbl" htmlFor="tt-subject">Subject</label>
+          <input id="tt-subject" className="input" list="tt-subject-list" value={f.subject} onChange={set('subject')} autoFocus maxLength={80} placeholder="e.g. Engineering Physics" />
+          <datalist id="tt-subject-list">{subjectNames.map((n) => <option key={n} value={n} />)}</datalist>
+          {err.subject && <div className="err">{err.subject}</div>}
+        </div>
+        <div>
+          <label className="lbl" htmlFor="tt-day">Day</label>
+          <select id="tt-day" className="input" value={f.day} onChange={set('day')}>{DAYS.map((d) => <option key={d} value={d}>{d}</option>)}</select>
+          {err.day && <div className="err">{err.day}</div>}
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="lbl" htmlFor="tt-start">Start time</label>
+            <input id="tt-start" className="input num" type="time" value={f.start} onChange={set('start')} />
+            {err.start && <div className="err">{err.start}</div>}
+          </div>
+          <div>
+            <label className="lbl" htmlFor="tt-end">End time</label>
+            <input id="tt-end" className="input num" type="time" value={f.end} onChange={set('end')} />
+            {err.end && <div className="err">{err.end}</div>}
+          </div>
+        </div>
+        <div>
+          <label className="lbl" htmlFor="tt-room">Classroom (optional)</label>
+          <input id="tt-room" className="input" value={f.room} onChange={set('room')} maxLength={40} placeholder="e.g. LH-204" />
+        </div>
+        <div className="flex gap-2 justify-end flex-wrap">
+          <button type="button" className="btn" onClick={onClose}>Cancel</button>
+          <button type="submit" className="btn btn-primary">{entry.id ? 'Save changes' : 'Add class'}</button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
+function TTImportModal({ entries, onAdd, onClose }) {
+  const sorted = [...entries].sort((a, b) => DAYS.indexOf(a.day) - DAYS.indexOf(b.day) || toMin(a.start) - toMin(b.start));
+  return (
+    <Modal onClose={onClose} label="Classes found in your file">
+      <h2>Classes found in your file</h2>
+      <p className="muted" style={{ marginBottom: 12 }}>Check the list. Anything wrong can be edited after adding.</p>
+      <div className="card" style={{ maxHeight: 300, overflowY: 'auto', marginBottom: 16 }}>
+        {sorted.map((e, i) => (
+          <div key={i} className="tt-row">
+            <span className="tt-time num">{e.day.slice(0, 3)} · {fmtTime(e.start)}</span>
+            <div className="tt-main"><b>{e.subject}</b><div className="tt-room">{e.room || 'No classroom'}</div></div>
+          </div>
+        ))}
+      </div>
+      <div className="flex gap-2 justify-end flex-wrap">
+        <button className="btn" onClick={onClose}>Skip, I will enter them myself</button>
+        <button className="btn btn-primary" onClick={onAdd}>Add {entries.length} {plural(entries.length, 'class', 'classes')}</button>
+      </div>
+    </Modal>
+  );
+}
+
+function EntryRow({ e, onEdit, onDelete, showSource }) {
+  return (
+    <div className="tt-row">
+      <span className="tt-time num">{fmtTime(e.start)} – {fmtTime(e.end)}</span>
+      <div className="tt-main">
+        <b>{e.subject}</b>
+        <div className="tt-room">{e.room ? 'Room ' + e.room : 'Classroom not added'}{showSource && <> · {e.source === 'individual' ? 'My timetable' : 'Added in All Timetable'}</>}</div>
+      </div>
+      <div className="tt-acts">
+        <button className="btn btn-sm icon-btn" style={{ width: 34 }} onClick={() => onEdit(e)} aria-label={`Edit ${e.subject}`} title="Edit"><Icon n="edit" s={15} /></button>
+        <button className="btn btn-sm icon-btn btn-danger" style={{ width: 34 }} onClick={() => onDelete(e)} aria-label={`Delete ${e.subject}`} title="Delete"><Icon n="trash" s={15} /></button>
+      </div>
+    </div>
+  );
+}
+
+function DayCards({ entries, onEdit, onDelete, hideEmpty, showSource }) {
+  const today = todayDay();
+  return (
+    <div className="tt-grid">
+      {DAYS.map((d) => {
+        const list = sortEntries(entries.filter((e) => e.day === d));
+        if (hideEmpty && !list.length) return null;
+        return (
+          <section key={d} className={'card tt-day' + (d === today ? ' today' : '')} aria-label={d}>
+            <div className="tt-day-h">
+              <h3>{d}</h3>
+              {d === today ? <span className="pill pill-good">Today</span> : <span className="num muted" style={{ fontSize: 12 }}>{list.length} {plural(list.length, 'class', 'classes')}</span>}
+            </div>
+            {list.length === 0 ? <div className="tt-none">No classes</div> : list.map((e) => <EntryRow key={e.id} e={e} onEdit={onEdit} onDelete={onDelete} showSource={showSource} />)}
+          </section>
+        );
+      })}
+    </div>
+  );
+}
+
+function FileViewer({ file }) {
+  const [url, setUrl] = useState(null);
+  useEffect(() => {
+    if (file.kind !== 'pdf' || !file.dataUrl) { setUrl(null); return; }
+    let u = null;
+    try { u = URL.createObjectURL(blobFromDataUrl(file.dataUrl, 'application/pdf')); setUrl(u); } catch (e) { setUrl(null); }
+    return () => { if (u) URL.revokeObjectURL(u); };
+  }, [file.dataUrl, file.kind]);
+  if (file.kind === 'image') return <img className="tt-file" src={file.dataUrl} alt={'Uploaded timetable: ' + file.name} />;
+  if (file.kind === 'pdf') {
+    return url ? (
+      <div className="grid gap-2">
+        <iframe className="tt-pdf" src={url} title={'Uploaded timetable: ' + file.name} />
+        <p className="muted" style={{ fontSize: 13 }}>If the PDF does not appear here, <a href={url} target="_blank" rel="noopener">open it in a new tab</a>.</p>
+      </div>
+    ) : <div className="note note-warn">This PDF could not be shown. Replace the file, or enter your classes manually.</div>;
+  }
+  const rows = Array.isArray(file.rows) ? file.rows : [];
+  return rows.length === 0 ? <div className="note note-warn">This spreadsheet appears to be empty.</div> : (
+    <div className="tt-table-wrap"><table className="tt-table"><tbody>{rows.map((r, i) => <tr key={i}>{r.map((c, j) => <td key={j}>{c}</td>)}</tr>)}</tbody></table></div>
+  );
+}
+
+function MyTimetablePage({ entries, file, saveFailed, subjects, onAdd, onEdit, onDelete, onChoose, onRemoveFile }) {
+  const [err, setErr] = useState('');
+  const mine = entries.filter((e) => e.source === 'individual');
+  const pick = (ev) => {
+    const f = ev.target.files && ev.target.files[0];
+    ev.target.value = '';
+    if (!f) return;
+    const ext = (f.name.split('.').pop() || '').toLowerCase();
+    const kind = f.type.indexOf('image/') === 0 || ['png', 'jpg', 'jpeg', 'gif', 'webp'].indexOf(ext) >= 0 ? 'image'
+      : f.type === 'application/pdf' || ext === 'pdf' ? 'pdf'
+      : ['xlsx', 'xls', 'csv'].indexOf(ext) >= 0 ? 'sheet' : null;
+    if (!kind) return setErr('That file type is not supported. Choose an image, a PDF, or an Excel or CSV file.');
+    if (f.size > TT_MAX_FILE) return setErr('That file is larger than 10 MB. Choose a smaller file or a compressed image.');
+    setErr('');
+    onChoose(f, kind);
+  };
+  return (
+    <div className="grid gap-4">
+      <div className="sec-h" style={{ margin: 0 }}>
+        <h2>My individual timetable</h2>
+        <button className="btn btn-primary" onClick={() => onAdd('individual')}><Icon n="plus" />Add class</button>
+      </div>
+
+      <div className="card p-5 grid gap-3">
+        <div className="flex items-start justify-between gap-3 flex-wrap">
+          <div style={{ minWidth: 0 }}>
+            <h3 style={{ fontSize: 18 }}>Timetable file</h3>
+            <p className="muted" style={{ fontSize: 13 }}>Upload a photo, PDF or Excel/CSV timetable. Excel files are read automatically when they follow a simple layout. Other files are shown here so you can copy the classes in by hand.</p>
+          </div>
+          {file && <button className="btn btn-sm btn-danger" onClick={onRemoveFile}><Icon n="trash" s={15} />Remove file</button>}
+        </div>
+        <div>
+          <label className="lbl" htmlFor="tt-file">{file ? 'Replace file' : 'Upload file'}</label>
+          <input id="tt-file" className="input" type="file" accept=".png,.jpg,.jpeg,.gif,.webp,.pdf,.xlsx,.xls,.csv,image/*,application/pdf" onChange={pick} />
+          {err && <div className="err">{err}</div>}
+        </div>
+        {file && saveFailed && <div className="note note-warn">This file is too large for the browser to keep. It stays visible until you refresh or close the page. Your classes below are saved.</div>}
+        {file ? (
+          <div className="grid gap-2">
+            <div className="num muted" style={{ fontSize: 13, overflowWrap: 'anywhere' }}>{file.name} · {Math.max(1, Math.round((file.size || 0) / 1024))} KB</div>
+            <FileViewer file={file} />
+          </div>
+        ) : <div className="note note-info">No file uploaded. You can still build your timetable with Add class.</div>}
+      </div>
+
+      <div className="sec-h" style={{ margin: '4px 0 0' }}><h2 style={{ fontSize: 18 }}>My classes</h2></div>
+      {mine.length === 0 ? (
+        <div className="card empty">
+          <h3 style={{ fontSize: 20, marginBottom: 8 }}>No classes in your timetable yet</h3>
+          <p className="muted" style={{ marginBottom: 16 }}>Add each class with its day, time and classroom{file ? ', using your uploaded file as a guide' : ''}.</p>
+          <button className="btn btn-primary" onClick={() => onAdd('individual')}><Icon n="plus" />Add your first class</button>
+        </div>
+      ) : <DayCards entries={mine} onEdit={onEdit} onDelete={onDelete} hideEmpty />}
+    </div>
+  );
+}
+
+function AllTimetablePage({ entries, onAdd, onEdit, onDelete }) {
+  const total = entries.length;
+  return (
+    <div className="grid gap-4">
+      <div className="sec-h" style={{ margin: 0 }}>
+        <h2>All timetable</h2>
+        <button className="btn btn-primary" onClick={() => onAdd('all')}><Icon n="plus" />Add class</button>
+      </div>
+      {total === 0 ? (
+        <div className="card empty">
+          <h3 style={{ fontSize: 22, marginBottom: 8 }}>No classes added yet</h3>
+          <p className="muted" style={{ marginBottom: 18 }}>Everything you add here, and everything in My Individual Timetable, shows up in one week view, Monday to Sunday.</p>
+          <div className="flex gap-2 justify-center flex-wrap">
+            <button className="btn btn-primary" onClick={() => onAdd('all')}><Icon n="plus" />Add a class</button>
+            <a className="btn" href="#my-timetable">Go to My Individual Timetable</a>
+          </div>
+        </div>
+      ) : (
+        <>
+          <p className="muted num" style={{ fontSize: 13 }}>{total} {plural(total, 'class', 'classes')} per week · sorted by start time</p>
+          <DayCards entries={entries} onEdit={onEdit} onDelete={onDelete} showSource />
+        </>
+      )}
+    </div>
+  );
+}
+
+/* ---------- app ---------- */
+function App() {
+  const [data, setData] = useState(loadData);
+  const route = useRoute();
+  const theme = useTheme();
+  const [toast, setToast] = useState(null);
+  const [modal, setModal] = useState(null);
+  const tRef = useRef(null);
+  const [ttEntries, setTTEntries] = useState(loadTT);
+  const [ttFile, setTTFile] = useState(loadTTFile);
+  const [ttSaveFailed, setTTSaveFailed] = useState(false);
+
+  useEffect(() => { try { localStorage.setItem(KEY, JSON.stringify(data)); } catch (e) {} }, [data]);
+  useEffect(() => { try { localStorage.setItem(TT_KEY, JSON.stringify({ entries: ttEntries })); } catch (e) {} }, [ttEntries]);
+  useEffect(() => {
+    try {
+      if (ttFile) localStorage.setItem(TT_FILE_KEY, JSON.stringify(ttFile)); else localStorage.removeItem(TT_FILE_KEY);
+      setTTSaveFailed(false);
+    } catch (e) {
+      try { localStorage.removeItem(TT_FILE_KEY); } catch (e2) {}
+      setTTSaveFailed(!!ttFile);
+    }
+  }, [ttFile]);
+  useEffect(() => { window.scrollTo(0, 0); }, [route]);
+
+  const notify = (msg, undo) => {
+    clearTimeout(tRef.current);
+    setToast({ msg, undo });
+    tRef.current = setTimeout(() => setToast(null), undo ? 6500 : 4000);
+  };
+  const patch = (fn) => setData((d) => ({ ...d, subjects: fn(d.subjects) }));
+  const askConfirm = (c) => setModal({ type: 'confirm', ...c });
+
+  const mark = (id, status, date) => {
+    const prev = data.subjects.find((s) => s.id === id);
+    if (!prev) return;
+    const rec = { id: rid(), date: date || todayStr(), status, ts: Date.now() };
+    patch((subs) => subs.map((s) => (s.id !== id ? s : {
+      ...s, conducted: s.conducted + 1, attended: s.attended + (status === 'present' ? 1 : 0), history: [...s.history, rec],
+    })));
+    notify(`${status === 'present' ? 'Present' : 'Absent'} recorded for ${prev.name}`, () => patch((subs) => subs.map((s) => (s.id !== id ? s : {
+      ...s, conducted: Math.max(0, s.conducted - 1), attended: Math.max(0, Math.min(s.attended - (status === 'present' ? 1 : 0), Math.max(0, s.conducted - 1))), history: s.history.filter((r) => r.id !== rec.id),
+    }))));
+  };
+  const saveSubject = (sub) => {
+    const exists = data.subjects.some((s) => s.id === sub.id);
+    patch((subs) => (exists ? subs.map((s) => (s.id === sub.id ? { ...s, ...sub } : s)) : [...subs, sub]));
+    setModal(null);
+    notify(exists ? 'Subject updated' : 'Subject added');
+  };
+  const deleteSubject = (s) => askConfirm({
+    title: `Delete ${s.name}?`, body: 'The subject and all of its attendance history will be removed.', label: 'Delete subject', danger: true,
+    onYes: () => { patch((subs) => subs.filter((x) => x.id !== s.id)); if (route === 'subject-' + s.id) go(''); notify('Subject deleted'); },
+  });
+  const resetSubject = (s) => askConfirm({
+    title: `Reset ${s.name}?`, body: 'Conducted and attended go back to 0 and the history is cleared. The subject itself stays.', label: 'Reset attendance', danger: true,
+    onYes: () => { patch((subs) => subs.map((x) => (x.id === s.id ? { ...x, conducted: 0, attended: 0, history: [] } : x))); notify('Attendance reset'); },
+  });
+  const correct = (id, c, a) => { patch((subs) => subs.map((s) => (s.id === id ? { ...s, conducted: c, attended: Math.min(a, c) } : s))); notify('Totals corrected'); };
+  const saveRecord = (sid, rId, { date, status }) => {
+    patch((subs) => subs.map((s) => {
+      if (s.id !== sid) return s;
+      const rec = s.history.find((r) => r.id === rId);
+      if (!rec) return s;
+      let a = s.attended;
+      if (rec.status !== status) a += status === 'present' ? 1 : -1;
+      a = Math.max(0, Math.min(a, s.conducted));
+      return { ...s, attended: a, history: s.history.map((r) => (r.id === rId ? { ...r, date, status } : r)) };
+    }));
+    setModal(null);
+    notify('Entry updated');
+  };
+  const deleteRecord = (sid, rId) => {
+    patch((subs) => subs.map((s) => {
+      if (s.id !== sid) return s;
+      const rec = s.history.find((r) => r.id === rId);
+      if (!rec) return s;
+      const conducted = Math.max(0, s.conducted - 1);
+      const attended = Math.max(0, Math.min(s.attended - (rec.status === 'present' ? 1 : 0), conducted));
+      return { ...s, conducted, attended, history: s.history.filter((r) => r.id !== rId) };
+    }));
+    setModal(null);
+    notify('Entry deleted');
+  };
+  const setAll = (subjects) => { setData({ sample: false, subjects }); };
+  const merge = (incoming) => {
+    setData((d) => {
+      const key = (s) => s.name.trim().toLowerCase() + '|' + s.code.trim().toLowerCase();
+      const subs = [...d.subjects];
+      incoming.forEach((n) => {
+        const i = subs.findIndex((s) => key(s) === key(n));
+        if (i >= 0) subs[i] = { ...n, id: subs[i].id };
+        else subs.push({ ...n, id: subs.some((s) => s.id === n.id) ? uid() : n.id });
+      });
+      return { sample: false, subjects: subs };
+    });
+  };
+
+  /* timetable handlers */
+  const openTTAdd = (source) => setModal({ type: 'tt', entry: { source } });
+  const openTTEdit = (e) => setModal({ type: 'tt', entry: e });
+  const saveTT = (entry) => {
+    const clean = cleanEntry({ ...entry, id: entry.id || eid() });
+    if (!clean) { notify('Check the subject, day and times, then try again.'); return; }
+    const exists = ttEntries.some((e) => e.id === clean.id);
+    const clash = ttEntries.find((e) => e.id !== clean.id && overlaps(e, clean));
+    setTTEntries((list) => (exists ? list.map((e) => (e.id === clean.id ? clean : e)) : [...list, clean]));
+    setModal(null);
+    notify((exists ? 'Class updated' : 'Class added') + (clash ? `. It overlaps with ${clash.subject}.` : ''));
+  };
+  const deleteTT = (e) => askConfirm({
+    title: `Delete ${e.subject}?`, body: `${e.day}, ${fmtTime(e.start)} to ${fmtTime(e.end)} will be removed from your timetable.`, label: 'Delete class', danger: true,
+    onYes: () => { setTTEntries((l) => l.filter((x) => x.id !== e.id)); notify('Class deleted'); },
+  });
+  const chooseTTFile = (f, kind) => {
+    const fr = new FileReader();
+    fr.onerror = () => notify('That file could not be read. Try another file.');
+    fr.onload = () => {
+      const dataUrl = String(fr.result || '');
+      const meta = { name: f.name, kind, size: f.size };
+      if (kind === 'sheet') {
+        if (!window.XLSX) { notify('Excel reading needs an internet connection. Choose an image or PDF, or add the classes manually.'); return; }
+        try {
+          const wb = XLSX.read(dataUrl.split(',')[1] || '', { type: 'base64' });
+          const ws = wb.Sheets[wb.SheetNames[0]];
+          const raw = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: '' });
+          const shown = XLSX.utils.sheet_to_json(ws, { header: 1, raw: false, defval: '' }).slice(0, 80).map((r) => r.slice(0, 15).map((c) => String(c == null ? '' : c)));
+          setTTFile({ ...meta, rows: shown });
+          const found = parseSheetRows(raw);
+          if (found.length) setModal({ type: 'ttimport', entries: found });
+          else notify('File saved and shown below. It could not be read automatically, so add the classes manually.');
+        } catch (e) { notify('That spreadsheet could not be opened. Try another file.'); }
+        return;
+      }
+      setTTFile({ ...meta, dataUrl });
+      notify('File saved and shown below. Add the classes from it with Add class.');
+    };
+    fr.readAsDataURL(f);
+  };
+  const removeTTFile = () => askConfirm({
+    title: 'Remove the uploaded file?', body: 'The file will be removed from this browser. Classes you added to your timetable stay.', label: 'Remove file', danger: true,
+    onYes: () => { setTTFile(null); notify('File removed'); },
+  });
+  const addImported = (found) => {
+    setTTEntries((list) => {
+      const out = [...list];
+      found.forEach((n) => {
+        const c = cleanEntry({ ...n, id: eid(), source: 'individual' });
+        if (c && !out.some((e) => e.day === c.day && e.start === c.start && e.end === c.end && e.subject.toLowerCase() === c.subject.toLowerCase())) out.push(c);
+      });
+      return out;
+    });
+    setModal(null);
+    notify('Classes added to My Individual Timetable');
+  };
+
+  const sid = route.indexOf('subject-') === 0 ? route.slice(8) : null;
+  const tab = sid || route === '' || route === 'dashboard' ? 'dashboard' : route;
+  const subject = sid ? data.subjects.find((s) => s.id === sid) : null;
+  const openAdd = () => setModal({ type: 'subject' });
+  const openEdit = (s) => setModal({ type: 'subject', subject: s });
+  const openRecord = (sId, rId) => setModal({ type: 'record', sId, rId });
+
+  let page;
+  if (sid) {
+    page = subject
+      ? <Detail s={subject} onMark={mark} onEditSubject={openEdit} onReset={resetSubject} onDelete={deleteSubject} onCorrect={correct} onEditRecord={openRecord} />
+      : <div className="card empty"><h2 style={{ fontSize: 20, marginBottom: 12 }}>Subject not found</h2><a className="btn btn-primary" href="#">Back to dashboard</a></div>;
+  } else if (route === 'subjects') page = <SubjectsPage data={data} onAdd={openAdd} onEdit={openEdit} onReset={resetSubject} onDelete={deleteSubject} />;
+  else if (route === 'history') page = <HistoryPage data={data} onEditRecord={openRecord} />;
+  else if (route === 'my-timetable') page = <MyTimetablePage entries={ttEntries} file={ttFile} saveFailed={ttSaveFailed} subjects={data.subjects} onAdd={openTTAdd} onEdit={openTTEdit} onDelete={deleteTT} onChoose={chooseTTFile} onRemoveFile={removeTTFile} />;
+  else if (route === 'all-timetable') page = <AllTimetablePage entries={ttEntries} onAdd={openTTAdd} onEdit={openTTEdit} onDelete={deleteTT} />;
+  else if (route === 'data') page = <DataPage data={data} setAll={setAll} merge={merge} notify={notify} askConfirm={askConfirm} />;
+  else page = <Dashboard data={data} onMark={mark} onAdd={openAdd}
+    onLoadSample={() => setData(seedData())}
+    onClearSample={() => { setData({ sample: false, subjects: [] }); notify('Example data cleared'); }}
+    onKeepSample={() => setData((d) => ({ ...d, sample: false }))} />;
+
+  const TABS = [['dashboard', '', 'Dashboard'], ['subjects', 'subjects', 'Subjects'], ['history', 'history', 'History'], ['my-timetable', 'my-timetable', 'My Individual Timetable'], ['all-timetable', 'all-timetable', 'All Timetable'], ['data', 'data', 'Data']];
+  const recSubject = modal && modal.type === 'record' ? data.subjects.find((s) => s.id === modal.sId) : null;
+  const rec = recSubject ? recSubject.history.find((r) => r.id === modal.rId) : null;
+
+  return (
+    <>
+      <header className="topbar">
+        <div className="gutter">
+          <div className="inner">
+            <div className="topbar-row">
+              <a className="brand" href="#"><span className="mark">75</span><span><b>Attendance Calculator</b><small>Semester tracker</small></span></a>
+              <button className="btn icon-btn" onClick={theme.toggle} aria-label={theme.effective === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'} title="Toggle dark mode">
+                <Icon n={theme.effective === 'dark' ? 'sun' : 'moon'} />
+              </button>
+            </div>
+            <nav className="tabs" aria-label="Main">
+              {TABS.map(([k, h, label]) => <a key={k} href={'#' + h} className={'tab' + (tab === k ? ' on' : '')}>{label}</a>)}
+            </nav>
+          </div>
+        </div>
+      </header>
+      <main className="gutter"><div className="inner view" key={route}>{page}</div></main>
+
+      {modal && modal.type === 'subject' && <SubjectModal subject={modal.subject} onSave={saveSubject} onClose={() => setModal(null)} />}
+      {modal && modal.type === 'confirm' && <Confirm c={modal} onCancel={() => setModal(null)} onYes={() => { const y = modal.onYes; setModal(null); y(); }} />}
+      {modal && modal.type === 'tt' && <TTEntryModal entry={modal.entry} subjectNames={data.subjects.map((x) => x.name)} onSave={saveTT} onClose={() => setModal(null)} />}
+      {modal && modal.type === 'ttimport' && <TTImportModal entries={modal.entries} onAdd={() => addImported(modal.entries)} onClose={() => setModal(null)} />}
+      {rec && <RecordModal s={recSubject} r={rec} onSave={(v) => saveRecord(recSubject.id, rec.id, v)} onDelete={() => deleteRecord(recSubject.id, rec.id)} onClose={() => setModal(null)} />}
+      {toast && <div className="toast" role="status"><span>{toast.msg}</span>{toast.undo && <button onClick={() => { toast.undo(); setToast(null); }}>Undo</button>}</div>}
+    </>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+
+</body>
+</html>
